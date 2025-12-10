@@ -1,43 +1,56 @@
 # openeo_dedl_plugin/local_loader.py
+
 from pathlib import Path
+from typing import Any, Dict, Optional
 
-import openeo.local.processing as _local_processing
-from openeo_pg_parser_networkx.process_registry import Process
-import openeo_processes_dask.specs as _specs
+import xarray as xr
 
+from openeo.local.processing import register_local_collection_handler
 from .sen3 import open_olci_wfr_sen3
 
-# Keep reference to the original implementation
-_original_load_local_collection = _local_processing.load_local_collection
 
-
-def _load_collection_with_dedl(*args, **kwargs):
+def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
     """
-    Wrapper around the original load_local_collection that adds
-    support for extra formats (e.g. .SEN3) and then falls back.
+    Data-level handler for Sentinel-3 OLCI .SEN3 directories.
+
+    This is called from openeo.local.processing.load_local_collection
+    before the built-in NetCDF/Zarr/GeoTIFF logic.
+
+    Parameters
+    ----------
+    path:
+        Path to the collection id, as a filesystem path.
+    args:
+        Full argument dict passed to the 'load_collection' process
+        (e.g. includes 'id', 'spatial_extent', 'temporal_extent', 'bands', ...).
+
+    Returns
+    -------
+    xarray.DataArray or None
+        If the path is a .SEN3 directory, returns an array for openEO to use.
+        Otherwise returns None to delegate to the default loader.
     """
-    collection_id = kwargs.get("id") or kwargs.get("collection_id")
-    if collection_id is None:
-        return _original_load_local_collection(*args, **kwargs)
+    # Only handle .SEN3 directories here
+    if not path.is_dir():
+        return None
 
-    path = Path(collection_id)
+    if not (path.suffix == ".SEN3" or path.name.endswith(".SEN3")):
+        return None
 
-    # 1) New: Sentinel-3 .SEN3 folder
-    if path.suffix == ".SEN3" or path.name.endswith(".SEN3"):
-        da = open_olci_wfr_sen3(path)
-        return da
+    # Optionally honour 'bands' selection from the load_collection arguments
+    bands_arg = args.get("bands")
+    if bands_arg is None or bands_arg in ([], ()):
+        variables = None
+    else:
+        # Expect a list of band names matching OLCI variables
+        variables = list(bands_arg)
 
-    # 2) Fallback to the original behaviour (.nc, .zarr, .tif, .tiff, ...)
-    return _original_load_local_collection(*args, **kwargs)
+    da = open_olci_wfr_sen3(path=path, variables=variables)
+    return da
 
 
-def register_dedl_local_plugin():
+def register_dedl_local_plugin() -> None:
     """
-    Register our wrapper as the implementation of 'load_collection'
-    in the local ProcessRegistry.
+    Register the .SEN3 data handler with the local 'load_collection' plugin hook.
     """
-    _local_processing.PROCESS_REGISTRY["load_collection"] = Process(
-        spec=_specs.load_collection,
-        implementation=_load_collection_with_dedl,
-    )
-
+    register_local_collection_handler(_sen3_data_handler)
