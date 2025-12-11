@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import xarray as xr
-
 from openeo.local.processing import register_local_collection_handler
+
 from .sen3 import open_olci_sen3
 
 

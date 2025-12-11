@@ -3,7 +3,7 @@
 Plugin that adds **Sentinel-3 OLCI `.SEN3` SAFE product support** to the **local backend** of the modified `openeo-python-client`.
 Uses **Satpy** to load `.SEN3` data as an openEO `DataCube`.
 
-Currently Supported Products : 
+Currently Supported Products :
 
 1. Sentinel 3 OLCI L1B ERR
 2. Sentinel 3 OLCI L2 WFR
@@ -125,7 +125,7 @@ cube = con.load_collection(
 )
 
 cube
-cube.execute()  
+cube.execute()
 ```
 
 ---

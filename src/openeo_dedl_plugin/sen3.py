@@ -1,10 +1,10 @@
 # openeo_dedl_plugin/sen3.py
-from pathlib import Path
-from typing import Dict, Any, Optional, List, Sequence
 import logging
 import warnings
-import numpy as np
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence
 
+import numpy as np
 import xarray as xr
 from satpy import find_files_and_readers
 from satpy.scene import Scene

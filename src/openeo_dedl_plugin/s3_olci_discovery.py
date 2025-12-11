@@ -1,11 +1,12 @@
 # openeo_dedl_plugin/s3_olci_discovery.py
 
-from pathlib import Path
-from typing import Any, Dict, Optional, List
 import logging
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from openeo.local.collections import register_local_collection_handler
+
 from .sen3 import DEFAULT_OLCI_VARS, olci_metadata_from_safe
 
 _log = logging.getLogger(__name__)
