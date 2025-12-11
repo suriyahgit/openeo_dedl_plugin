@@ -1,62 +1,98 @@
 # openeo_dedl_plugin/sen3.py
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence
+
+import warnings
 
 import xarray as xr
+from satpy import find_files_and_readers
+from satpy.scene import Scene
+
+# Optional: tone down Satpy/xarray runtime warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+# Default set of bands & auxiliary variables to load
+DEFAULT_OLCI_VARS: List[str] = [
+    "Oa01", "Oa02", "Oa03", "Oa04", "Oa05",
+    "Oa06", "Oa07", "Oa08", "Oa09", "Oa10",
+    "Oa11", "Oa12", "Oa13", "Oa14", "Oa15",
+    "Oa16", "Oa17", "Oa18", "Oa19", "Oa20", "Oa21",
+    "solar_zenith_angle", "solar_azimuth_angle",
+    "satellite_zenith_angle", "satellite_azimuth_angle",
+    "quality_flags", "mask",
+]
 
 
-def open_olci_wfr_sen3(path: Path, variables: Optional[List[str]] = None) -> xr.DataArray:
+def open_olci_wfr_sen3(
+    path: Path,
+    variables: Optional[Sequence[str]] = None,
+) -> xr.DataArray:
     """
-    Open a Sentinel-3 OLCI WFR .SEN3 directory as an xarray.DataArray
-    with a 'bands' dimension that is compatible with openEO local processing.
+    Open a Sentinel-3 OLCI L1B WFR SAFE product (.SEN3) using Satpy
+    and convert it to an xarray.DataArray suitable for openEO local processing.
 
     Parameters
     ----------
     path:
-        Path to the .SEN3 directory.
+        Path to the .SEN3 directory (SAFE product root).
     variables:
-        Optional subset of variable names to include. If None, all variables
-        starting with 'Oa' are used.
+        Optional sequence of variable names to load. If None, a default list
+        of OLCI bands + angles + flags is used (DEFAULT_OLCI_VARS).
 
     Returns
     -------
     xarray.DataArray
-        Array with dimensions (bands, y, x, ...) depending on the source files.
+        DataArray with dimensions roughly: ('time', 'bands', 'y', 'x').
+        Band names are stored in the 'bands' coordinate.
     """
     path = Path(path)
 
+    if not path.exists():
+        raise FileNotFoundError(f"{path!s} does not exist.")
+
     if not path.is_dir():
-        raise ValueError(f"{path!r} is not a directory. Expected a .SEN3 folder.")
+        raise ValueError(f"{path!s} is not a directory. Expected a .SEN3 SAFE folder.")
 
-    # This glob pattern is deliberately broad; adjust to the actual filenames
-    # in your OLCI WFR products (e.g. *_radiance.nc, *_reflectance.nc, etc.)
-    nc_files = sorted(path.glob("Oa*.nc"))
-    if not nc_files:
-        raise IOError(f"No OLCI band NetCDF files found in {path!s}")
+    # Satpy discovers all relevant granules/files under base_dir.
+    # For a single SAFE product, base_dir is typically the directory itself.
+    base_dir = path
 
-    # Combine by coordinates; if products are tiled differently, you may need 'nested'
-    ds = xr.open_mfdataset(
-        [str(f) for f in nc_files],
-        combine="by_coords",
-        parallel=True,
+    files = find_files_and_readers(
+        sensor="olci",
+        base_dir=str(base_dir),
+        reader="olci_l1b",
     )
 
-    # Choose band variables
+    if not files:
+        raise IOError(f"No OLCI L1B files found under {base_dir!s} for reader 'olci_l1b'.")
+
+    # Create the Satpy Scene
+    scn = Scene(filenames=files)
+
+    # Decide what to load
+    load_vars: Sequence[str]
     if variables is None:
-        band_vars = [v for v in ds.data_vars if v.startswith("Oa")]
+        load_vars = DEFAULT_OLCI_VARS
     else:
-        band_vars = variables
+        load_vars = list(variables)
 
-    if not band_vars:
-        raise ValueError(f"No band variables found in dataset from {path!s}")
+    # 1. Load variables (lazy)
+    scn.load(load_vars)
 
-    # Stack variables into a 'bands' dimension
-    da = ds[band_vars].to_array(dim="bands")
-    da = da.assign_coords(bands=band_vars)
+    # 2. Acquisition time: mid-point between start and end
+    acq_time = scn.start_time + (scn.end_time - scn.start_time) / 2
 
-    # You can attach CRS here if available, e.g.:
-    # import rioxarray
-    # da = da.rio.write_crs("EPSG:4326", inplace=True)
+    # 3. Scene → xarray.Dataset
+    ds: xr.Dataset = scn.to_xarray()
+
+    # 4. Add time dimension (length 1)
+    ds = ds.expand_dims(time=[acq_time])
+
+    # 5. Collapse all data variables into "bands" → one DataArray
+    #    dims come out as ('bands', 'time', 'y', 'x'); we reorder to
+    #    ('time', 'bands', 'y', 'x') which is more natural for EO.
+    da = ds.to_array(dim="bands")
+    da = da.transpose("time", "bands", "y", "x")
 
     return da
