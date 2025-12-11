@@ -8,6 +8,7 @@ import numpy as np
 import xarray as xr
 from satpy import find_files_and_readers
 from satpy.scene import Scene
+from xcube_resampling.rectify import rectify_dataset
 
 _log = logging.getLogger(__name__)
 
@@ -16,14 +17,32 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # Default set of bands & auxiliary variables to load
 DEFAULT_OLCI_VARS: List[str] = [
+    # Core OLCI bands
     "Oa01", "Oa02", "Oa03", "Oa04", "Oa05",
     "Oa06", "Oa07", "Oa08", "Oa09", "Oa10",
     "Oa11", "Oa12", "Oa13", "Oa14", "Oa15",
     "Oa16", "Oa17", "Oa18", "Oa19", "Oa20", "Oa21",
-    "solar_zenith_angle", "solar_azimuth_angle",
-    "satellite_zenith_angle", "satellite_azimuth_angle",
-    "quality_flags", "mask",
+
+    # Geometry
+    "solar_zenith_angle",
+    "solar_azimuth_angle",
+    "satellite_zenith_angle",
+    "satellite_azimuth_angle",
+
+    # Flags & masks
+    "quality_flags",
+    "mask",
+
+    # Auxiliary variables (from your new list)
+    "altitude",
+    "humidity",
+    "latitude",
+    "longitude",
+    "sea_level_pressure",
+    "total_columnar_water_vapour",
+    "total_ozone",
 ]
+
 
 
 def open_olci_wfr_sen3(
@@ -86,6 +105,8 @@ def open_olci_wfr_sen3(
 
     # 3. Scene → xarray.Dataset
     ds: xr.Dataset = scn.to_xarray()
+
+    #ds = rectify_dataset(ds, interp_methods="nearest")
 
     # 4. Add time dimension (length 1)
     ds = ds.expand_dims(time=[acq_time])
