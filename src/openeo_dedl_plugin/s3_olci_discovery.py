@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 
 from openeo.local.collections import register_local_collection_handler
-from .sen3 import DEFAULT_OLCI_VARS, olci_err_metadata_from_safe
+from .sen3 import DEFAULT_OLCI_VARS, olci_metadata_from_safe
 
 _log = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def sen3_collection_handler(path: Path) -> Optional[Dict[str, Any]]:
 
     # 1. Derive metadata from Satpy/SEN3 helper
     try:
-        meta = olci_err_metadata_from_safe(path)
+        meta = olci_metadata_from_safe(path)
         bbox = meta["bbox"]
         temporal_interval = meta["temporal_interval"]
         t_min, t_max = temporal_interval[0]

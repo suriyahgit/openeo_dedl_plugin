@@ -14,11 +14,6 @@ _log = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-
-# openeo_dedl_plugin/sen3.py
-
-# --- DEFAULT VARIABLE LISTS -------------------------------------------------
-
 # L1B defaults (your current set, adjust if needed)
 DEFAULT_OLCI_L1B_VARS: List[str] = [
     # Core OLCI bands
@@ -101,7 +96,7 @@ def _infer_olci_level_and_reader(path: Path) -> (str, List[str]):
     return "olci_l1b", DEFAULT_OLCI_VARS
 
 
-def open_olci_err_sen3(
+def open_olci_sen3(
     path: Path,
     variables: Optional[Sequence[str]] = None,
 ) -> xr.DataArray:
@@ -156,7 +151,7 @@ def open_olci_err_sen3(
     return da
 
 
-def olci_err_metadata_from_safe(path: Path) -> Dict[str, Any]:
+def olci_metadata_from_safe(path: Path) -> Dict[str, Any]:
     """
     Derive basic metadata (time interval, bbox, band names) for a
     Sentinel-3 OLCI SAFE product (L1B or L2).
