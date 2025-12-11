@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 
 from openeo.local.collections import register_local_collection_handler
-from .sen3 import DEFAULT_OLCI_VARS
+from .sen3 import DEFAULT_OLCI_VARS, olci_wfr_metadata_from_safe
 
 _log = logging.getLogger(__name__)
 
@@ -52,51 +52,124 @@ def _parse_safe_times(path: Path) -> List[List[Optional[str]]]:
 def sen3_collection_handler(path: Path) -> Optional[Dict[str, Any]]:
     """
     Discovery handler for Sentinel-3 OLCI WFR .SEN3 products.
-
-    Called by openeo.local.collections._get_local_collections for every
-    path in the search tree (except for known .nc/.zarr/.tif/.tiff files).
-
-    If this handler recognizes the path as a .SEN3 directory, it returns
-    a STAC-like collection metadata dictionary; otherwise it returns None.
     """
     # Only act on .SEN3 directories
     if not path.is_dir():
         return None
-
     if not (path.suffix == ".SEN3" or path.name.endswith(".SEN3")):
         return None
 
-    # Temporal extent from SAFE product name
-    temporal_interval = _parse_safe_times(path)
+    # 1. Derive metadata from Satpy/SEN3 helper
+    try:
+        meta = olci_wfr_metadata_from_safe(path)
+        bbox = meta["bbox"]
+        temporal_interval = meta["temporal_interval"]
+        t_min, t_max = temporal_interval[0]
+        bands = meta["bands"]
+    except Exception as e:
+        _log.warning("Failed to derive OLCI metadata from %s: %s. "
+                     "Falling back to global bbox and unknown time.", path, e)
+        bbox = [[-180.0, -90.0, 180.0, 90.0]]
+        temporal_interval = [[None, None]]
+        t_min, t_max = None, None
+        bands = list(DEFAULT_OLCI_VARS)
 
-    # Spatial extent: for now, global bbox; we can refine later
-    bbox = [[-180.0, -90.0, 180.0, 90.0]]
+    # 2. Simple platform/product fields from SAFE name
+    name = path.name
+    if name.endswith(".SEN3"):
+        name_wo = name[:-5]
+    else:
+        name_wo = name
+    parts = name_wo.split("_")
+    platform_id = parts[0] if len(parts) > 0 else "Sentinel-3"
+    instrument = "OLCI"
+    processing_level = "L1B"
+    product_type = "_".join(parts[1:4]) if len(parts) >= 4 else None
+
+    providers = [
+        {
+            "name": "EUMETSAT",
+            "roles": ["producer", "licensor"],
+            "url": "https://www.eumetsat.int/",
+        },
+        {
+            "name": "European Space Agency (ESA)",
+            "roles": ["producer"],
+            "url": "https://sentinels.copernicus.eu/",
+        },
+    ]
+
+    keywords = [
+        "Copernicus",
+        "Sentinel-3",
+        "OLCI",
+        "Ocean and Land Colour Instrument",
+        "Radiance",
+        "L1B",
+        "Full Resolution",
+        "Ocean colour",
+        "Marine",
+        "Optical",
+    ]
+
+    summaries: Dict[str, Any] = {
+        "platform": [platform_id],
+        "constellation": ["Sentinel-3"],
+        "instruments": [instrument],
+        "processing:level": [processing_level],
+    }
+    if product_type:
+        summaries["s3:product_type"] = [product_type]
+
+    eo_bands = [{"name": b} for b in bands]
+    summaries["eo:bands"] = eo_bands
 
     metadata: Dict[str, Any] = {
-        "id": path.as_posix(),
-        "title": path.name,
-        "description": "Sentinel-3 OLCI WFR product (.SEN3)",
         "stac_version": "1.0.0",
+        "type": "Collection",
+        "id": path.as_posix(),
+        "title": f"{platform_id} {instrument} WFR L1B product ({name})",
+        "description": (
+            "Sentinel-3 Ocean and Land Colour Instrument (OLCI) "
+            "Level-1B Full Resolution (WFR) radiance product in SAFE (.SEN3) format, "
+            "as provided by EUMETSAT/ESA and exposed via openEO local collections."
+        ),
+        "license": "Copernicus free and open data licence",
+        "providers": providers,
+        "links": [],
+        "keywords": keywords,
         "extent": {
             "spatial": {"bbox": bbox},
             "temporal": {"interval": temporal_interval},
         },
         "cube:dimensions": {
-            "x": {"type": "spatial", "axis": "x"},
-            "y": {"type": "spatial", "axis": "y"},
-            "t": {"type": "temporal"},
+            "x": {
+                "type": "spatial",
+                "axis": "x",
+                # We only know geographic bbox; exact pixel extents will be in the data,
+                # but for metadata this is fine.
+                "extent": [bbox[0][0], bbox[0][2]],
+                "reference_system": "EPSG:4326",
+            },
+            "y": {
+                "type": "spatial",
+                "axis": "y",
+                "extent": [bbox[0][1], bbox[0][3]],
+                "reference_system": "EPSG:4326",
+            },
+            "t": {
+                "type": "temporal",
+                "extent": [t_min, t_max],
+            },
             "bands": {
                 "type": "bands",
-                # Important so CollectionMetadata doesn't warn "No band names".
-                "values": list(DEFAULT_OLCI_VARS),
+                "values": bands,
             },
         },
-        # You can later add "summaries" and "eo:bands" here if you want
-        # richer metadata (wavelengths, common names, etc.).
+        "summaries": summaries,
     }
 
     return metadata
-
 
 def register() -> None:
     """
