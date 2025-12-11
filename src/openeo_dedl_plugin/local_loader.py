@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 import xarray as xr
 
 from openeo.local.processing import register_local_collection_handler
-from .sen3 import open_olci_wfr_sen3
+from .sen3 import open_olci_err_sen3
 
 
 def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
@@ -45,7 +45,7 @@ def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArra
         # Expect a list of band names matching OLCI variables
         variables = list(bands_arg)
 
-    da = open_olci_wfr_sen3(path=path, variables=variables)
+    da = open_olci_err_sen3(path=path, variables=variables)
     return da
 
 

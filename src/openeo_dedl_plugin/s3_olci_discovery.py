@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 
 from openeo.local.collections import register_local_collection_handler
-from .sen3 import DEFAULT_OLCI_VARS, olci_wfr_metadata_from_safe
+from .sen3 import DEFAULT_OLCI_VARS, olci_err_metadata_from_safe
 
 _log = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ def _parse_safe_times(path: Path) -> List[List[Optional[str]]]:
 
 def sen3_collection_handler(path: Path) -> Optional[Dict[str, Any]]:
     """
-    Discovery handler for Sentinel-3 OLCI WFR .SEN3 products.
+    Discovery handler for Sentinel-3 OLCI ERR .SEN3 products.
     """
     # Only act on .SEN3 directories
     if not path.is_dir():
@@ -61,7 +61,7 @@ def sen3_collection_handler(path: Path) -> Optional[Dict[str, Any]]:
 
     # 1. Derive metadata from Satpy/SEN3 helper
     try:
-        meta = olci_wfr_metadata_from_safe(path)
+        meta = olci_err_metadata_from_safe(path)
         bbox = meta["bbox"]
         temporal_interval = meta["temporal_interval"]
         t_min, t_max = temporal_interval[0]
@@ -128,10 +128,10 @@ def sen3_collection_handler(path: Path) -> Optional[Dict[str, Any]]:
         "stac_version": "1.0.0",
         "type": "Collection",
         "id": path.as_posix(),
-        "title": f"{platform_id} {instrument} WFR L1B product ({name})",
+        "title": f"{platform_id} {instrument} ERR L1B product ({name})",
         "description": (
             "Sentinel-3 Ocean and Land Colour Instrument (OLCI) "
-            "Level-1B Full Resolution (WFR) radiance product in SAFE (.SEN3) format, "
+            "Level-1B Full Resolution (ERR) radiance product in SAFE (.SEN3) format, "
             "as provided by EUMETSAT/ESA and exposed via openEO local collections."
         ),
         "license": "Copernicus free and open data licence",

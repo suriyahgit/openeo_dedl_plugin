@@ -45,12 +45,12 @@ DEFAULT_OLCI_VARS: List[str] = [
 
 
 
-def open_olci_wfr_sen3(
+def open_olci_err_sen3(
     path: Path,
     variables: Optional[Sequence[str]] = None,
 ) -> xr.DataArray:
     """
-    Open a Sentinel-3 OLCI L1B WFR SAFE product (.SEN3) using Satpy
+    Open a Sentinel-3 OLCI L1B ERR SAFE product (.SEN3) using Satpy
     and convert it to an xarray.DataArray suitable for openEO local processing.
 
     Parameters
@@ -117,10 +117,10 @@ def open_olci_wfr_sen3(
 
     return da
 
-def olci_wfr_metadata_from_safe(path: Path) -> Dict[str, Any]:
+def olci_err_metadata_from_safe(path: Path) -> Dict[str, Any]:
     """
     Derive basic metadata (time interval, bbox, band names) for a
-    Sentinel-3 OLCI L1B WFR SAFE product.
+    Sentinel-3 OLCI L1B ERR SAFE product.
 
     This is intentionally lighter than full radiance loading:
     we only load longitude/latitude to get the spatial footprint.
@@ -132,7 +132,7 @@ def olci_wfr_metadata_from_safe(path: Path) -> Dict[str, Any]:
     if not path.is_dir():
         raise ValueError(f"{path!s} is not a directory. Expected a .SEN3 SAFE folder.")
 
-    # IMPORTANT: same base_dir logic as open_olci_wfr_sen3
+    # IMPORTANT: same base_dir logic as open_olci_err_sen3
     base_dir = path.parent
 
     files = find_files_and_readers(
