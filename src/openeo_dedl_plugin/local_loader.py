@@ -4,17 +4,17 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import xarray as xr
-
 from openeo.local.processing import register_local_collection_handler
-from .sen3 import open_olci_err_sen3
+
+from .sen3 import open_olci_sen3
 
 
 def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
     """
     Data-level handler for Sentinel-3 OLCI .SEN3 directories.
 
-    This is called from openeo.local.processing.load_local_collection
-    before the built-in NetCDF/Zarr/GeoTIFF logic.
+    Supports both Level-1B (e.g. OL_1_ERR) and Level-2 (e.g. OL_2_WFR)
+    products via Satpy readers 'olci_l1b' and 'olci_l2'.
 
     Parameters
     ----------
@@ -45,7 +45,7 @@ def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArra
         # Expect a list of band names matching OLCI variables
         variables = list(bands_arg)
 
-    da = open_olci_err_sen3(path=path, variables=variables)
+    da = open_olci_sen3(path=path, variables=variables)
     return da
 
 

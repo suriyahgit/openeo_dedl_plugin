@@ -1,11 +1,12 @@
-Here is a **clean, concise `README.md`** with only the essentials you asked for: folder structure, installation steps, and usage example — **no deep explanations**.
-
----
-
 # openeo-dedl-plugin
 
 Plugin that adds **Sentinel-3 OLCI `.SEN3` SAFE product support** to the **local backend** of the modified `openeo-python-client`.
 Uses **Satpy** to load `.SEN3` data as an openEO `DataCube`.
+
+Currently Supported Products :
+
+1. Sentinel 3 OLCI L1B ERR
+2. Sentinel 3 OLCI L2 WFR
 
 ---
 
@@ -42,6 +43,8 @@ pip install -e .
 ---
 
 ## 🚀 Usage Example
+
+This is for Sentinel 3 OLCI L1B ERR product
 
 ```python
 import openeo
@@ -96,6 +99,33 @@ cube = con.load_collection(
 cube
 cube.execute()  # or cube.download_result(...)
 
+```
+
+This is for Sentinel 3 OLCI L2 WFR product
+
+```python
+import openeo
+from openeo_dedl_plugin import register_all
+import warnings
+
+warnings.filterwarnings("ignore")
+warnings.simplefilter(action = "ignore", category = RuntimeWarning)
+
+register_all()
+
+con = openeo.local.LocalConnection(
+    local_collections_path="/home/sdhinakaran/test_DEDL/data"
+)
+
+print(con.list_collections())
+
+cube = con.load_collection(
+    "/home/sdhinakaran/test_DEDL/data/S3B_OL_2_WFR____20240625T084330_20240625T084630_20240626T162746_0179_094_278_1800_MAR_O_NT_003.SEN3/",
+     bands=["chl_nn", "iop_nn"], fetch_metadata=True,
+)
+
+cube
+cube.execute()
 ```
 
 ---

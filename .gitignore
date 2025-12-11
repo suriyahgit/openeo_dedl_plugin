@@ -1,0 +1,34 @@
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+src/openeo_dedl_plugin/.ipynb_checkpoints/
+
+# Python bytecode cache
+src/openeo_dedl_plugin/__pycache__/
+
+# Additional useful patterns you might want to include:
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter notebooks checkpoints (general pattern)
+.ipynb_checkpoints/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python virtual environments
+venv/
+env/
+.venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
