@@ -9,7 +9,6 @@ import xarray as xr
 from satpy import find_files_and_readers
 from satpy.scene import Scene
 
-# Optional: tone down Satpy/xarray runtime warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # Default set of bands & auxiliary variables to load
@@ -54,9 +53,9 @@ def open_olci_wfr_sen3(
     if not path.is_dir():
         raise ValueError(f"{path!s} is not a directory. Expected a .SEN3 SAFE folder.")
 
-    # Satpy discovers all relevant granules/files under base_dir.
-    # For a single SAFE product, base_dir is typically the directory itself.
-    base_dir = path
+    # IMPORTANT: Satpy works when base_dir is the parent directory,
+    # matching your working snippet.
+    base_dir = path.parent
 
     files = find_files_and_readers(
         sensor="olci",
@@ -65,15 +64,14 @@ def open_olci_wfr_sen3(
     )
 
     if not files:
-        raise IOError(f"No OLCI L1B files found under {base_dir!s} for reader 'olci_l1b'.")
+        raise ValueError(f"No supported files found under {base_dir!s} for reader 'olci_l1b'.")
 
     # Create the Satpy Scene
     scn = Scene(filenames=files)
 
-    # Decide what to load
-    load_vars: Sequence[str]
+    # Select variables
     if variables is None:
-        load_vars = DEFAULT_OLCI_VARS
+        load_vars: Sequence[str] = DEFAULT_OLCI_VARS
     else:
         load_vars = list(variables)
 
@@ -90,8 +88,6 @@ def open_olci_wfr_sen3(
     ds = ds.expand_dims(time=[acq_time])
 
     # 5. Collapse all data variables into "bands" → one DataArray
-    #    dims come out as ('bands', 'time', 'y', 'x'); we reorder to
-    #    ('time', 'bands', 'y', 'x') which is more natural for EO.
     da = ds.to_array(dim="bands")
     da = da.transpose("time", "bands", "y", "x")
 
