@@ -70,5 +70,32 @@ cube = con.load_collection(
 cube # process graph should pop up here
 cube.execute()  # data array should pop up
 ```
+With bands filtering!
+
+```python
+import openeo
+from openeo_dedl_plugin import register_all
+import warnings
+
+warnings.filterwarnings("ignore")
+warnings.simplefilter(action = "ignore", category = RuntimeWarning)
+
+register_all()
+
+con = openeo.local.LocalConnection(
+    local_collections_path="/home/sdhinakaran/test_DEDL/data"
+)
+
+print(con.list_collections())
+
+cube = con.load_collection(
+    "/home/sdhinakaran/test_DEDL/data/S3B_OL_1_ERR____20240625T083313_20240625T091737_20240921T223114_2664_094_278______MAR_R_NT_004.SEN3",
+     bands=["humidity", "total_ozone"], fetch_metadata=True,
+)
+
+cube
+cube.execute()  # or cube.download_result(...)
+
+```
 
 ---
