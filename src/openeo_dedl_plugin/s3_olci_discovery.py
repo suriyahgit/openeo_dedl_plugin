@@ -83,8 +83,17 @@ def sen3_collection_handler(path: Path) -> Optional[Dict[str, Any]]:
     parts = name_wo.split("_")
     platform_id = parts[0] if len(parts) > 0 else "Sentinel-3"
     instrument = "OLCI"
-    processing_level = "L1B"
-    product_type = "_".join(parts[1:4]) if len(parts) >= 4 else None
+
+    level = None
+    if len(parts) >= 3:
+        level = parts[2]
+
+    if level == "1":
+        processing_level = "L1B"
+    elif level == "2":
+        processing_level = "L2"
+    else:
+        processing_level = "Unknown"
 
     providers = [
         {
@@ -118,20 +127,27 @@ def sen3_collection_handler(path: Path) -> Optional[Dict[str, Any]]:
         "instruments": [instrument],
         "processing:level": [processing_level],
     }
-    if product_type:
-        summaries["s3:product_type"] = [product_type]
+    product_type = "_".join(parts[1:4]) if len(parts) >= 4 else None
 
     eo_bands = [{"name": b} for b in bands]
     summaries["eo:bands"] = eo_bands
+
+    title_level = processing_level if processing_level != "Unknown" else "L1/L2"
+    title = f"{platform_id} {instrument} {title_level} product ({name})"
+
+    if product_type:
+        desc_prod = product_type
+    else:
+        desc_prod = "OLCI SAFE"
 
     metadata: Dict[str, Any] = {
         "stac_version": "1.0.0",
         "type": "Collection",
         "id": path.as_posix(),
-        "title": f"{platform_id} {instrument} ERR L1B product ({name})",
+        "title": title,
         "description": (
-            "Sentinel-3 Ocean and Land Colour Instrument (OLCI) "
-            "Level-1B Full Resolution (ERR) radiance product in SAFE (.SEN3) format, "
+            f"Sentinel-3 Ocean and Land Colour Instrument (OLCI) "
+            f"{desc_prod} product in SAFE (.SEN3) format, "
             "as provided by EUMETSAT/ESA and exposed via openEO local collections."
         ),
         "license": "Copernicus free and open data licence",

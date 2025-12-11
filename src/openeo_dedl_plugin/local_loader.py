@@ -13,8 +13,8 @@ def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArra
     """
     Data-level handler for Sentinel-3 OLCI .SEN3 directories.
 
-    This is called from openeo.local.processing.load_local_collection
-    before the built-in NetCDF/Zarr/GeoTIFF logic.
+    Supports both Level-1B (e.g. OL_1_ERR) and Level-2 (e.g. OL_2_WFR)
+    products via Satpy readers 'olci_l1b' and 'olci_l2'.
 
     Parameters
     ----------
