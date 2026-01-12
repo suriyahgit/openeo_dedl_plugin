@@ -63,10 +63,10 @@ def _seviri_nat_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.Da
         return None
 
     bands_arg = args.get("bands")
-    if bands_arg:
-        variables = [b for b in bands_arg if b in DEFAULT_SEVIRI_VARS]
-    else:
+    if bands_arg is None or bands_arg in ([], ()):
         variables = None
+    else:
+        variables = list(bands_arg)
 
     return open_seviri_nat(path=nat_path, variables=variables)
 

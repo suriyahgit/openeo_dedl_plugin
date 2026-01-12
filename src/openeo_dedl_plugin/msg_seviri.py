@@ -11,6 +11,7 @@ from satpy.scene import Scene
 _log = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+
 DEFAULT_SEVIRI_VARS = [
     "HRV",
     "IR_016",
@@ -26,6 +27,41 @@ DEFAULT_SEVIRI_VARS = [
     "WV_073",
 ]
 
+SEVIRI_3KM_VARS = [
+    "IR_016",
+    "IR_039",
+    "IR_087",
+    "IR_097",
+    "IR_108",
+    "IR_120",
+    "IR_134",
+    "VIS006",
+    "VIS008",
+    "WV_062",
+    "WV_073",
+]
+
+SEVIRI_HRV_VARS = ["HRV"]
+
+
+def _validate_seviri_band_selection(requested: Sequence[str]) -> None:
+    s = set(requested)
+    allowed = set(DEFAULT_SEVIRI_VARS)
+    unknown = sorted(s - allowed)
+    if unknown:
+        raise ValueError(f"Unknown SEVIRI bands requested: {unknown}. Allowed: {DEFAULT_SEVIRI_VARS}")
+
+    has_hrv = "HRV" in s
+    has_3km = any(b in s for b in SEVIRI_3KM_VARS)
+
+    if has_hrv and has_3km:
+        raise ValueError(
+            "SEVIRI band selection mixes incompatible grids: HRV (high-resolution) "
+            "cannot be combined with the 3km channels in a single openEO cube. "
+            "Load HRV alone (bands=['HRV']) OR load only 3km channels "
+            f"(bands={SEVIRI_3KM_VARS})."
+        )
+
 
 def open_seviri_nat(path: Path, variables: Optional[Sequence[str]] = None) -> xr.DataArray:
     path = Path(path)
@@ -36,10 +72,18 @@ def open_seviri_nat(path: Path, variables: Optional[Sequence[str]] = None) -> xr
 
     scn = Scene(reader="seviri_l1b_native", filenames=[str(path)])
 
-    load_vars = list(DEFAULT_SEVIRI_VARS if variables is None else variables)
+    # DEFAULT POLICY (Option 1):
+    # - default load: only 3km channels (exclude HRV) to keep one consistent grid
+    # - if user selects bands: validate they are from ONE group (HRV-only or 3km-only)
+    if variables is None or list(variables) == []:
+        load_vars = list(SEVIRI_3KM_VARS)
+    else:
+        load_vars = list(variables)
+
+    _validate_seviri_band_selection(load_vars)
+
     scn.load(load_vars)
 
-    # Mid-point time like you do for OLCI
     start_time = getattr(scn, "start_time", None)
     end_time = getattr(scn, "end_time", None)
     if start_time and end_time:
@@ -49,16 +93,18 @@ def open_seviri_nat(path: Path, variables: Optional[Sequence[str]] = None) -> xr
 
     ds: xr.Dataset = scn.to_xarray()
 
-    # Ensure time dimension exists (openEO convention)
+    # enforce stable ordering + only requested vars
+    ordered = [b for b in load_vars if b in ds.data_vars]
+    ds = ds[ordered]
+
     if acq_time is not None:
         ds = ds.expand_dims(time=[acq_time])
-        da = ds.to_array(dim="bands").transpose("time", "bands", "y", "x")
     else:
-        # fallback: still provide time dim
         ds = ds.expand_dims(time=[np.datetime64("NaT")])
-        da = ds.to_array(dim="bands").transpose("time", "bands", "y", "x")
 
+    da = ds.to_array(dim="bands").transpose("time", "bands", "y", "x")
     return da
+
 
 def seviri_metadata_from_nat(path: Path) -> Dict[str, Any]:
     scn = Scene(reader="seviri_l1b_native", filenames=[str(path)])
