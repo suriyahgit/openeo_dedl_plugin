@@ -7,6 +7,7 @@ import xarray as xr
 from openeo.local.processing import register_local_collection_handler
 
 from .sen3 import open_olci_sen3
+from .msg_seviri import open_seviri_nat
 
 
 def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
@@ -48,9 +49,23 @@ def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArra
     da = open_olci_sen3(path=path, variables=variables)
     return da
 
+def _seviri_nat_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
+    if not path.is_file():
+        return None
+    if path.suffix.lower() != ".nat":
+        return None
+
+    bands_arg = args.get("bands")
+    
+    if bands_arg:
+        variables = [b for b in bands_arg if b in DEFAULT_SEVIRI_VARS]
+    else:
+        variables = None
+    return open_seviri_nat(path=path, variables=variables)
 
 def register_dedl_local_plugin() -> None:
     """
     Register the .SEN3 data handler with the local 'load_collection' plugin hook.
     """
     register_local_collection_handler(_sen3_data_handler)
+    register_local_collection_handler(_seviri_nat_data_handler)
