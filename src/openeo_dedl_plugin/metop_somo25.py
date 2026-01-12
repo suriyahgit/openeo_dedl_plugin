@@ -115,48 +115,82 @@ def open_somo25_nat(path: Path, variables: Optional[Sequence[str]] = None) -> xr
 
     Returns openEO-friendly DataArray with dims: (time, bands, y, x)
     where (y,x) is the native swath grid (line,node).
+
+    NOTE:
+      ASCAT L2 has a per-observation coordinate `time (obs)`. After unstacking obs->(y,x),
+      that becomes a `time (y,x)` variable/coord, which conflicts with creating an outer
+      `time` dimension via `expand_dims(time=[...])`.
+      We therefore compute an acquisition time first, then drop the per-pixel time.
     """
     path = Path(path)
     resolved = _resolve_nat(path)
     if not resolved:
-        raise ValueError(f"{path!s} is neither a .nat file nor a directory with exactly one .nat file.")
+        raise ValueError(
+            f"{path!s} is neither a .nat file nor a directory with exactly one .nat file."
+        )
     _, nat_path = resolved
 
+    # Read ASCAT
     ds, _md = AscatL2File(nat_path).read(generic=True, to_xarray=True)
 
-    # band selection
+    # Resolve requested variables
     if variables is None or list(variables) == []:
         load_vars = list(DEFAULT_SOMO25_VARS)
     else:
         load_vars = list(variables)
 
+    # Validate variable names early (only against original ds)
     unknown = sorted(set(load_vars) - set(ds.data_vars))
     if unknown:
-        raise ValueError(f"Unknown SOMO25 variables requested: {unknown}. Available: {sorted(ds.data_vars)}")
+        raise ValueError(
+            f"Unknown SOMO25 variables requested: {unknown}. "
+            f"Available: {sorted(ds.data_vars)}"
+        )
 
-    # keep only requested variables + geolocation/time support
+    # Compute a single representative acquisition time for this file
+    # (midpoint between min/max obs times)
+    acq_time = np.datetime64("NaT")
+    if "time" in ds:
+        tmin = ds["time"].min().values
+        tmax = ds["time"].max().values
+        if isinstance(tmin, np.datetime64) and isinstance(tmax, np.datetime64) and not np.isnat(tmin) and not np.isnat(tmax):
+            acq_time = tmin + (tmax - tmin) / 2
+        elif isinstance(tmin, np.datetime64) and not np.isnat(tmin):
+            acq_time = tmin
+        elif isinstance(tmax, np.datetime64) and not np.isnat(tmax):
+            acq_time = tmax
+
+    # IMPORTANT: drop per-observation time to avoid collision with outer 'time' dimension
+    if "time" in ds:
+        ds = ds.drop_vars("time")
+
+    # Keep only requested variables + the minimum needed for swath gridding + geolocation
     keep = set(load_vars)
-    for v in ("lat", "lon", "time", "line_num", "node_num"):
-        if v in ds:
+    for v in ("lat", "lon", "line_num", "node_num"):
+        if v in ds.variables:
             keep.add(v)
+
     ds = ds[list(keep.intersection(set(ds.variables)))]
 
-    # grid to (y,x)
+    # Grid obs stream to 2D swath (y,x)
     ds2 = _grid_swath_to_line_node(ds)
 
-    # pick a single acquisition time per file (midpoint), like your SEVIRI implementation
-    tmin = ds["time"].min().values if "time" in ds else np.datetime64("NaT")
-    tmax = ds["time"].max().values if "time" in ds else np.datetime64("NaT")
-    if isinstance(tmin, np.datetime64) and isinstance(tmax, np.datetime64) and not np.isnat(tmin) and not np.isnat(tmax):
-        acq_time = tmin + (tmax - tmin) / 2
-    else:
-        acq_time = tmin if not np.isnat(tmin) else tmax
+    # Ensure lat/lon are coords (after unstack, they can become data vars)
+    if "lat" in ds2:
+        ds2 = ds2.set_coords("lat")
+    if "lon" in ds2:
+        ds2 = ds2.set_coords("lon")
 
-    ds2 = ds2[load_vars]  # only requested variables become bands
+    # Only keep the requested science variables as bands
+    ds2 = ds2[load_vars]
+
+    # Add outer time dimension (length=1)
     ds2 = ds2.expand_dims(time=[acq_time])
 
+    # Convert Dataset -> DataArray with 'bands' dimension
     da = ds2.to_array(dim="bands").transpose("time", "bands", "y", "x")
     return da
+
 
 
 def somo25_metadata_from_nat(path: Path) -> Dict[str, Any]:

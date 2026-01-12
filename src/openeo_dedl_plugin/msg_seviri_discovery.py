@@ -10,19 +10,19 @@ from .msg_seviri import DEFAULT_SEVIRI_VARS, seviri_metadata_from_nat
 _log = logging.getLogger(__name__)
 
 
+def _is_seviri_nat(p: Path) -> bool:
+    name = p.name
+    return (
+        p.suffix.lower() == ".nat"
+        and ("MSG" in name or "SEVI" in name)   # keep it simple
+        and "ASCA_SMO" not in name              # explicit exclude
+    )
+
 def _resolve_nat(path: Path) -> Optional[Tuple[Path, Path]]:
-    """
-    Resolve (collection_id_path, nat_file_path).
-
-    Supports:
-      - collection_id is a .nat file
-      - collection_id is a directory containing exactly one .nat file
-    """
-    if path.is_file() and path.suffix.lower() == ".nat":
+    if path.is_file() and _is_seviri_nat(path):
         return path, path
-
     if path.is_dir():
-        nats = sorted(path.glob("*.nat"))
+        nats = sorted([p for p in path.glob("*.nat") if _is_seviri_nat(p)])
         if len(nats) == 1:
             return path, nats[0]
     return None

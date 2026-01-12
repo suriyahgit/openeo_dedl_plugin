@@ -10,14 +10,19 @@ from .metop_somo25 import DEFAULT_SOMO25_VARS, somo25_metadata_from_nat
 _log = logging.getLogger(__name__)
 
 
+def _is_somo25_nat(p: Path) -> bool:
+    name = p.name
+    return p.suffix.lower() == ".nat" and name.startswith("ASCA_SMO_")
+
 def _resolve_nat(path: Path) -> Optional[Tuple[Path, Path]]:
-    if path.is_file() and path.suffix.lower() == ".nat":
+    if path.is_file() and _is_somo25_nat(path):
         return path, path
     if path.is_dir():
-        nats = sorted(path.glob("*.nat"))
+        nats = sorted([p for p in path.glob("*.nat") if _is_somo25_nat(p)])
         if len(nats) == 1:
             return path, nats[0]
     return None
+
 
 
 def metop_somo25_collection_handler(path: Path) -> Optional[Dict[str, Any]]:
