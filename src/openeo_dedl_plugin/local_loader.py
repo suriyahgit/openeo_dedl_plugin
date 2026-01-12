@@ -7,7 +7,7 @@ import xarray as xr
 from openeo.local.processing import register_local_collection_handler
 
 from .sen3 import open_olci_sen3
-from .msg_seviri import open_seviri_nat
+from .msg_seviri import DEFAULT_SEVIRI_VARS, open_seviri_nat
 
 
 def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
@@ -50,18 +50,26 @@ def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArra
     return da
 
 def _seviri_nat_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
-    if not path.is_file():
-        return None
-    if path.suffix.lower() != ".nat":
+    nat_path = None
+    if path.is_file() and path.suffix.lower() == ".nat":
+        nat_path = path
+    elif path.is_dir():
+        nats = sorted(path.glob("*.nat"))
+        if len(nats) == 1:
+            nat_path = nats[0]
+        else:
+            return None
+    else:
         return None
 
     bands_arg = args.get("bands")
-    
     if bands_arg:
         variables = [b for b in bands_arg if b in DEFAULT_SEVIRI_VARS]
     else:
         variables = None
-    return open_seviri_nat(path=path, variables=variables)
+
+    return open_seviri_nat(path=nat_path, variables=variables)
+
 
 def register_dedl_local_plugin() -> None:
     """
