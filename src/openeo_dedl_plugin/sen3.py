@@ -44,10 +44,6 @@ DEFAULT_OLCI_L1B_VARS: List[str] = [
 
 # L2 defaults (from your list)
 DEFAULT_OLCI_L2_VARS: List[str] = [
-    "Oa01", "Oa02", "Oa03", "Oa04", "Oa05",
-    "Oa06", "Oa07", "Oa08", "Oa09", "Oa10",
-    "Oa11", "Oa12", "Oa13", "Oa14", "Oa15",
-    "Oa16", "Oa17", "Oa18", "Oa19", "Oa20", "Oa21",
     "chl_nn",
     "chl_oc4me",
     "iop_nn",
