@@ -22,7 +22,7 @@ VENV_NAME="openeo_dedl_venv"
 VENV_DIR="${HOME}/.venvs/${VENV_NAME}"
 
 # Keep external clones in one place
-SRC_DIR="${HOME}/src/dedl"
+SRC_DIR="${HOME}/DEDL_openEO"
 CLIENT_REPO_URL="https://github.com/suriyahgit/openeo-python-client.git"
 CLIENT_BRANCH="dedl_trial"
 
