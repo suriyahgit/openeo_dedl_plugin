@@ -1,7 +1,8 @@
 # openeo_dedl_plugin/__init__.py
 from .local_loader import register_dedl_local_plugin
 from .s3_olci_discovery import register as register_sen3_discovery
-
+from .msg_seviri_discovery import register as register_msg_discovery
+from .metop_somo25_discovery import register as register_somo25_discovery
 
 def register_all() -> None:
     """
@@ -12,3 +13,5 @@ def register_all() -> None:
     """
     register_dedl_local_plugin()
     register_sen3_discovery()
+    register_msg_discovery()
+    register_somo25_discovery()

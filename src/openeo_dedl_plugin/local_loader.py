@@ -7,6 +7,9 @@ import xarray as xr
 from openeo.local.processing import register_local_collection_handler
 
 from .sen3 import open_olci_sen3
+from .msg_seviri import DEFAULT_SEVIRI_VARS, open_seviri_nat
+from .metop_somo25 import DEFAULT_SOMO25_VARS, open_somo25_nat
+
 
 
 def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
@@ -48,9 +51,55 @@ def _sen3_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArra
     da = open_olci_sen3(path=path, variables=variables)
     return da
 
+def _seviri_nat_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
+    nat_path = None
+    if path.is_file() and path.suffix.lower() == ".nat":
+        nat_path = path
+    elif path.is_dir():
+        nats = sorted(path.glob("*.nat"))
+        if len(nats) == 1:
+            nat_path = nats[0]
+        else:
+            return None
+    else:
+        return None
+
+    bands_arg = args.get("bands")
+    if bands_arg is None or bands_arg in ([], ()):
+        variables = None
+    else:
+        variables = list(bands_arg)
+
+    return open_seviri_nat(path=nat_path, variables=variables)
+
+def _somo25_nat_data_handler(path: Path, args: Dict[str, Any]) -> Optional[xr.DataArray]:
+    nat_path = None
+    if path.is_file() and path.suffix.lower() == ".nat":
+        nat_path = path
+    elif path.is_dir():
+        nats = sorted(path.glob("*.nat"))
+        if len(nats) == 1:
+            nat_path = nats[0]
+        else:
+            return None
+    else:
+        return None
+
+    bands_arg = args.get("bands")
+    if bands_arg is None or bands_arg in ([], ()):
+        variables = None
+    else:
+        variables = list(bands_arg)
+
+    return open_somo25_nat(path=nat_path, variables=variables)
+
+
 
 def register_dedl_local_plugin() -> None:
     """
     Register the .SEN3 data handler with the local 'load_collection' plugin hook.
     """
     register_local_collection_handler(_sen3_data_handler)
+    register_local_collection_handler(_seviri_nat_data_handler)
+    register_local_collection_handler(_somo25_nat_data_handler)
+
