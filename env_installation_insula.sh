@@ -3,27 +3,34 @@ set -euo pipefail
 
 # -----------------------------------------------------------------------------
 # Insula / Destination Earth JupyterHub setup for openEO client + DEDL plugin
-# Creates venv: ~/.venvs/openeo_dedl_venv
-# Installs:
-#   - openeo-python-client (branch: dedl_trial) editable
-#   - openeo-dedl-plugin  (branch: ascat)     editable
-#   - openeo-processes-dask[implementations] (+ matching GDAL)
-#   - ipykernel + kernel registration
-#   - extra deps: ascat lxml python-geotiepoints cartopy
 #
-# Usage:
+# Expected workflow for a fresh Insula user:
+#   git clone https://github.com/suriyahgit/openeo_dedl_plugin.git
+#   cd openeo_dedl_plugin
 #   bash env_installation_insula.sh
+#
+# Creates venv: ~/.venvs/openeo_dedl_venv
+# Installs (order is important):
+#   1) openeo-python-client (branch: dedl_trial) editable
+#   2) openeo-processes-dask[implementations] (+ matching GDAL if available)
+#   3) THIS repo (openeo_dedl_plugin) (branch: ascat) editable
+#   4) ipykernel + kernel registration
+#   5) extra deps: ascat lxml python-geotiepoints cartopy
 # -----------------------------------------------------------------------------
 
 VENV_NAME="openeo_dedl_venv"
 VENV_DIR="${HOME}/.venvs/${VENV_NAME}"
 
-# Choose where to clone sources (keeps $HOME tidy and avoids cloning into repo dir)
+# Keep external clones in one place
 SRC_DIR="${HOME}/src/dedl"
 CLIENT_REPO_URL="https://github.com/suriyahgit/openeo-python-client.git"
 CLIENT_BRANCH="dedl_trial"
-PLUGIN_REPO_URL="https://github.com/suriyahgit/openeo_dedl_plugin.git"
+
+# Plugin branch required
 PLUGIN_BRANCH="ascat"
+
+# Repo root = directory containing this script
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "==> (0) Prereqs (safe)"
 python3 -m pip install --user -U pip virtualenv || true
@@ -37,7 +44,7 @@ source "${VENV_DIR}/bin/activate"
 echo "==> (2) Upgrade tooling inside venv"
 python -m pip install -U pip setuptools wheel
 
-echo "==> (3) Prepare source directory: ${SRC_DIR}"
+echo "==> (3) Prepare source directory for client clone: ${SRC_DIR}"
 mkdir -p "${SRC_DIR}"
 cd "${SRC_DIR}"
 
@@ -55,7 +62,7 @@ git pull --ff-only || true
 echo "==> (5) Install openeo-python-client editable"
 pip install -e .
 
-echo "==> (6) Install openeo-processes-dask implementations + GDAL matching system"
+echo "==> (6) Install openeo-processes-dask[implementations] + GDAL matching system"
 if command -v gdal-config >/dev/null 2>&1; then
   GDAL_VER="$(gdal-config --version)"
   echo "    Detected GDAL via gdal-config: ${GDAL_VER}"
@@ -66,19 +73,13 @@ else
   pip install "openeo-processes-dask[implementations]"
 fi
 
-echo "==> (7) Clone/update openeo-dedl-plugin (branch: ${PLUGIN_BRANCH})"
-cd "${SRC_DIR}"
-if [[ -d "${SRC_DIR}/openeo-dedl-plugin/.git" ]]; then
-  cd "${SRC_DIR}/openeo-dedl-plugin"
-  git fetch --all --prune
-else
-  git clone "${PLUGIN_REPO_URL}" "${SRC_DIR}/openeo-dedl-plugin"
-  cd "${SRC_DIR}/openeo-dedl-plugin"
-fi
+echo "==> (7) Switch THIS repo to required branch: ${PLUGIN_BRANCH}"
+cd "${REPO_ROOT}"
+git fetch --all --prune || true
 git checkout "${PLUGIN_BRANCH}"
 git pull --ff-only || true
 
-echo "==> (8) Install openeo-dedl-plugin editable"
+echo "==> (8) Install openeo_dedl_plugin (THIS repo) editable"
 pip install -e .
 
 echo "==> (9) Install ipykernel and register Jupyter kernel"
@@ -94,5 +95,3 @@ echo ""
 echo "✅ Done."
 echo "Now reload Jupyter (or refresh kernel list) and choose kernel: Python (${VENV_NAME})"
 echo "Venv path: ${VENV_DIR}"
-
-source "${VENV_DIR}/bin/activate"
