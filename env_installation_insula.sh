@@ -89,7 +89,19 @@ python -m ipykernel install --user \
   --display-name "Python (${VENV_NAME})"
 
 echo "==> (10) Extra deps"
-pip install -U ascat lxml python-geotiepoints cartopy
+pip install -U \
+  ascat \
+  lxml \
+  python-geotiepoints \
+  cartopy \
+  "destinelab>=1.1" \
+  "xarray>=2024.09.0" \
+  "numpy==1.26.4" \
+  ipywidgets \
+  earthkit-maps \
+  earthkit-data \
+  earthkit-regrid \
+  cf-units
 
 echo ""
 echo "✅ Done."
