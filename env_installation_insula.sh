@@ -13,9 +13,9 @@ set -euo pipefail
 # Installs (order is important):
 #   1) openeo-python-client (branch: dedl_trial) editable
 #   2) openeo-processes-dask[implementations] (+ matching GDAL if available)
-#   3) THIS repo (openeo_dedl_plugin) (branch: ascat) editable
+#   3) THIS repo (openeo_dedl_plugin) editable (assumed: main)
 #   4) ipykernel + kernel registration
-#   5) extra deps: ascat lxml python-geotiepoints cartopy
+#   5) extra deps: ascat lxml python-geotiepoints cartopy, etc.
 # -----------------------------------------------------------------------------
 
 VENV_NAME="openeo_dedl_venv"
@@ -25,9 +25,6 @@ VENV_DIR="${HOME}/.venvs/${VENV_NAME}"
 SRC_DIR="${HOME}/DEDL_openEO"
 CLIENT_REPO_URL="https://github.com/suriyahgit/openeo-python-client.git"
 CLIENT_BRANCH="dedl_trial"
-
-# Plugin branch required
-PLUGIN_BRANCH="ascat"
 
 # Repo root = directory containing this script
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -73,22 +70,20 @@ else
   pip install "openeo-processes-dask[implementations]"
 fi
 
-echo "==> (7) Switch THIS repo to required branch: ${PLUGIN_BRANCH}"
+echo "==> (7) Install openeo_dedl_plugin (THIS repo) editable (current branch)"
 cd "${REPO_ROOT}"
 git fetch --all --prune || true
-git checkout "${PLUGIN_BRANCH}"
 git pull --ff-only || true
 
-echo "==> (8) Install openeo_dedl_plugin (THIS repo) editable"
 pip install -e .
 
-echo "==> (9) Install ipykernel and register Jupyter kernel"
+echo "==> (8) Install ipykernel and register Jupyter kernel"
 python -m pip install -U ipykernel
 python -m ipykernel install --user \
   --name "${VENV_NAME}" \
   --display-name "Python (${VENV_NAME})"
 
-echo "==> (10) Extra deps"
+echo "==> (9) Extra deps"
 pip install -U \
   ascat \
   lxml \
