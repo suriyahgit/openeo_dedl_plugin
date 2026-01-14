@@ -90,7 +90,6 @@ pip install -U \
   python-geotiepoints \
   cartopy \
   "destinelab>=1.1" \
-  "xarray>=2024.09.0" \
   "numpy==1.26.4" \
   ipywidgets \
   earthkit-maps \
